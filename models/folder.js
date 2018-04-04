@@ -3,8 +3,11 @@
 const mongoose = require('mongoose');
 
 const folderSchema = new mongoose.Schema({
-  name: { type: String, unique: true}
+  name: { type: String },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
+
+folderSchema.index({ name: 1, userId: 1}, { unique: true });//ask why the position is important
 
 folderSchema.set('toObject', {
   transform: function (doc, ret) {
@@ -13,6 +16,7 @@ folderSchema.set('toObject', {
     delete ret.__v;
   }
 });
+
 
 /** BONUS CHALLENGE
  * Move the cascading delete or cascade set null into the schema
