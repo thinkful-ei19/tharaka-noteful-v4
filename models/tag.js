@@ -7,7 +7,7 @@ const tagSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
 
-tagSchema.index({ name: 1, userId: 1}, { unique: true });//how does this work
+tagSchema.index({ name: 1, userId: 1}, { unique: true });//how does this work 
 
 tagSchema.set('toObject', {
   transform: function (doc, ret) {
