@@ -110,7 +110,7 @@ describe('Noteful API - Notes', function () {
         .then((_data) => {
           data = _data;
           const dbPromise = Note.find({ folderId: data.id });
-          const apiPromise = chai.request(app).get(`/api/notes?folderId=${data.id}`);
+          const apiPromise = chai.request(app).get(`/api/notes?folderId=${data.id}`).set('Authorization', `Bearer ${token}`);
           return Promise.all([dbPromise, apiPromise]);
         })
         .then(([data, res]) => {
@@ -229,9 +229,9 @@ describe('Noteful API - Notes', function () {
 
   });
 
-  describe.only('PUT /api/notes/:id', function () {
+  describe('PUT /api/notes/:id', function () {
 
-    it.only('should update the note', function () {
+    it('should update the note', function () {
       const updateItem = {
         'title': 'What about dogs?!',
         'content': 'woof woof'
