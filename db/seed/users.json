@@ -3,7 +3,7 @@
     "_id": "333333333333333333333300",
     "fullname": "User Zero",
     "username": "user0",
-    "password": "$2a$10$QJCIX42iD5QMxLRgHHBJre2rH6c6nI24UysmSYtkmeFv6X8uS1kgi"
+    "password": "password"
   },
   {
     "_id": "333333333333333333333301",

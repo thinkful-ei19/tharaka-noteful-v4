@@ -6,7 +6,7 @@ const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const { TEST_MONGODB_URI } = require('../config'); ('../config');
+const { TEST_MONGODB_URI } = require('../config');
 
 const User = require('../models/user');
 
@@ -19,24 +19,24 @@ describe('Noteful API - Users', function () {
   const password = 'examplePass';
   const fullname = 'Example User';
 
-  before(function () {
+  before(function () {//run has password here
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());
   });
 
   beforeEach(function () {//was noop before
-    return User.ensureIndexes();
+    return User.ensureIndexes();//can also use createIndex
   });
 
   afterEach(function () {
-    return mongoose.connection.db.dropDatabase();
+    return mongoose.connection.db.dropDatabase();//can also use user.remove
   });
 
   after(function () {
     return mongoose.disconnect();
   });
 
-  describe.only('/api/users', function () {
+  describe('/api/users', function () {
     describe('POST', function () {
       it('Should create a new user', function () {
         const testUser = { username, password, fullname };
@@ -69,7 +69,7 @@ describe('Noteful API - Users', function () {
       it('Should reject users with missing username', function () {
         const testUser = { password, fullname };
         return chai.request(app).post('/api/users').send(testUser)
-          .catch(err => err.response)
+          .catch(err => err.response)//return err.response but dont need return because of the arrow function
           .then(res => {
             //console.log('BODY', res);
             expect(res).to.have.status(422);
