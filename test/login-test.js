@@ -49,7 +49,7 @@ describe('/api/login', function () {
   });
 
 
-  describe.only('POST', function () {
+  describe('POST', function () {
 
     it('Should return a valid auth token', function () {
       return chai.request(app)

@@ -3,26 +3,46 @@ const app = require('../server');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
-const { TEST_MONGODB_URI } = require('../config');
+const { TEST_MONGODB_URI, JWT_SECRET } = require('../config');
 
+
+const User = require('../models/user');
 const Tag = require('../models/tag');
 const seedTags = require('../db/seed/tags');
-
+const seedUsers = require('../db/seed/users');
 
 const expect = chai.expect;
 
 chai.use(chaiHttp);
 
 describe('Noteful API - Tags', function () {
+
+  let token;
+  let user;
+
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
       .then(() => mongoose.connection.db.dropDatabase());
   });
 
+  // beforeEach(function () {
+  //   return Tag.insertMany(seedTags)
+  //     .then(() => Tag.ensureIndexes());
+  // });
+
   beforeEach(function () {
-    return Tag.insertMany(seedTags)
-      .then(() => Tag.ensureIndexes());
+    return Promise.all([
+      User.insertMany(seedUsers),
+      Tag.insertMany(seedTags),
+      Tag.ensureIndexes()
+    ]).then(([users]) => {
+      user = users[0];
+      token = jwt.sign({ user }, JWT_SECRET, { subject: user.username });
+      // console.log('USER', user);
+      // console.log('TOKEN', token);
+    });
   });
 
   afterEach(function () {
@@ -37,8 +57,8 @@ describe('Noteful API - Tags', function () {
   describe('GET /api/tags', function () {
 
     it('should return the correct number of tags', function () {
-      const dbPromise = Tag.find();
-      const apiPromise = chai.request(app).get('/api/tags');
+      const dbPromise = Tag.find({ userId: user.id });
+      const apiPromise = chai.request(app).get('/api/tags').set('Authorization', `Bearer ${token}`);
 
       return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
@@ -50,8 +70,8 @@ describe('Noteful API - Tags', function () {
     });
 
     it('should return a list with the correct right fields', function () {
-      const dbPromise = Tag.find();
-      const apiPromise = chai.request(app).get('/api/tags');
+      const dbPromise = Tag.find({ userId: user.id });
+      const apiPromise = chai.request(app).get('/api/tags').set('Authorization', `Bearer ${token}`);
 
       return Promise.all([dbPromise, apiPromise])
         .then(([data, res]) => {
@@ -61,7 +81,7 @@ describe('Noteful API - Tags', function () {
           expect(res.body).to.have.length(data.length);
           res.body.forEach(function (item) {
             expect(item).to.be.a('object');
-            expect(item).to.have.keys('id', 'name');
+            expect(item).to.have.keys('id', 'name', 'userId');
           });
         });
     });
@@ -75,14 +95,14 @@ describe('Noteful API - Tags', function () {
       return Tag.findOne().select('id name')
         .then(_data => {
           data = _data;
-          return chai.request(app).get(`/api/tags/${data.id}`);
+          return chai.request(app).get(`/api/tags/${data.id}`).set('Authorization', `Bearer ${token}`);
         })
         .then((res) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
 
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'name');
+          expect(res.body).to.have.keys('id', 'name', 'userId');
 
           expect(res.body.id).to.equal(data.id);
           expect(res.body.name).to.equal(data.name);
@@ -93,7 +113,7 @@ describe('Noteful API - Tags', function () {
       const badId = '99-99-99';
 
       return chai.request(app)
-        .get(`/api/tags/${badId}`)
+        .get(`/api/tags/${badId}`).set('Authorization', `Bearer ${token}`)
         .catch(err => err.response)
         .then(res => {
           expect(res).to.have.status(400);
@@ -104,7 +124,7 @@ describe('Noteful API - Tags', function () {
     it('should respond with a 404 for an ID that does not exist', function () {
 
       return chai.request(app)
-        .get('/api/tags/AAAAAAAAAAAAAAAAAAAAAAAA')
+        .get('/api/tags/AAAAAAAAAAAAAAAAAAAAAAAA').set('Authorization', `Bearer ${token}`)
         .catch(err => err.response)
         .then(res => {
           expect(res).to.have.status(404);
@@ -121,7 +141,7 @@ describe('Noteful API - Tags', function () {
       };
       let body;
       return chai.request(app)
-        .post('/api/tags')
+        .post('/api/tags').set('Authorization', `Bearer ${token}`)
         .send(newItem)
         .then(function (res) {
           body = res.body;
@@ -129,7 +149,7 @@ describe('Noteful API - Tags', function () {
           expect(res).to.have.header('location');
           expect(res).to.be.json;
           expect(body).to.be.a('object');
-          expect(body).to.include.keys('id', 'name');
+          expect(body).to.include.keys('id', 'name', 'userId');
           return Tag.findById(body.id);
         })
         .then(data => {
@@ -144,7 +164,7 @@ describe('Noteful API - Tags', function () {
       };
 
       return chai.request(app)
-        .post('/api/tags')
+        .post('/api/tags').set('Authorization', `Bearer ${token}`)
         .send(newItem)
         .catch(err => err.response)
         .then(res => {
@@ -160,7 +180,7 @@ describe('Noteful API - Tags', function () {
       return Tag.findOne().select('id name')
         .then(data => {
           const newItem = { 'name': data.name };
-          return chai.request(app).post('/api/tags').send(newItem);
+          return chai.request(app).post('/api/tags').set('Authorization', `Bearer ${token}`).send(newItem);
         })
         .catch(err => err.response)
         .then(res => {
@@ -184,14 +204,14 @@ describe('Noteful API - Tags', function () {
         .then(_data => {
           data = _data;
           return chai.request(app)
-            .put(`/api/tags/${data.id}`)
+            .put(`/api/tags/${data.id}`).set('Authorization', `Bearer ${token}`)
             .send(updateItem);
         })
         .then(function (res) {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
-          expect(res.body).to.include.keys('id', 'name');
+          expect(res.body).to.include.keys('id', 'name', 'userId');
 
           expect(res.body.id).to.equal(data.id);
           expect(res.body.name).to.equal(updateItem.name);
@@ -206,7 +226,7 @@ describe('Noteful API - Tags', function () {
       const badId = '99-99-99';
 
       return chai.request(app)
-        .put(`/api/tags/${badId}`)
+        .put(`/api/tags/${badId}`).set('Authorization', `Bearer ${token}`)
         .send(updateItem)
         .catch(err => err.response)
         .then(res => {
@@ -221,7 +241,7 @@ describe('Noteful API - Tags', function () {
       };
 
       return chai.request(app)
-        .put('/api/tags/AAAAAAAAAAAAAAAAAAAAAAAA')
+        .put('/api/tags/AAAAAAAAAAAAAAAAAAAAAAAA').set('Authorization', `Bearer ${token}`)
         .send(updateItem)
         .catch(err => err.response)
         .then(res => {
@@ -235,7 +255,7 @@ describe('Noteful API - Tags', function () {
       };
 
       return chai.request(app)
-        .put('/api/tags/9999')
+        .put('/api/tags/9999').set('Authorization', `Bearer ${token}`)
         .send(updateItem)
         .catch(err => err.response)
         .then(res => {
@@ -252,7 +272,7 @@ describe('Noteful API - Tags', function () {
         .then(results => {
           const [item1, item2] = results;
           item1.name = item2.name;
-          return chai.request(app).put(`/api/tags/${item1.id}`).send(item1);
+          return chai.request(app).put(`/api/tags/${item1.id}`).set('Authorization', `Bearer ${token}`).send(item1);
         })
         .catch(err => err.response)
         .then(res => {
@@ -270,7 +290,7 @@ describe('Noteful API - Tags', function () {
     it('should delete an item by id', function () {
       return Tag.findOne().select('id name')
         .then(data => {
-          return chai.request(app).delete(`/api/tags/${data.id}`);
+          return chai.request(app).delete(`/api/tags/${data.id}`).set('Authorization', `Bearer ${token}`);
         })
         .then((res) => {
           expect(res).to.have.status(204);
